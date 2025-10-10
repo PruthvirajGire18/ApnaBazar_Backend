@@ -9,8 +9,8 @@ export const addProduct = async (req, res) => {
             let result = await cloudinary.uploader.upload(item.path, { resource_type: "image" });
             return result.secure_url;
         }));
-        await Product.create({ ...productData, images: imagesUrl });
-        res.status(201).json({ message: 'Product added successfully' });
+    await Product.create({ ...productData, images: imagesUrl });
+    res.status(201).json({ success: true, message: 'Product added successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error adding product', error });
     }
