@@ -16,7 +16,7 @@ export const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await User.create({ name, email, password: hashedPassword });
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-        res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' }, { maxAge: 7 * 24 * 60 * 60 * 1000 });
+        res.cookie('userToken', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' }, { maxAge: 7 * 24 * 60 * 60 * 1000 });
         return res.json({ success: true, user: { email: user.email, name: user.name,}});
 
     } catch (error) {
@@ -46,7 +46,7 @@ export const login = async (req, res) => {
         }
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-        res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' }, { maxAge: 7 * 24 * 60 * 60 * 1000 });
+        res.cookie('userToken', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' }, { maxAge: 7 * 24 * 60 * 60 * 1000 });
         return res.json({ success: true, user: { email: user.email, name: user.name, } });
 
     } catch (error) {
@@ -58,20 +58,23 @@ export const login = async (req, res) => {
 
 // Check auth:/api/user/is-auth
 export const isAuth = async (req, res) => {
-    try {
-        const { userId } = req.body;
-        const user=await User.findById(userId).select('-password');
-        return res.json({ success: true, user });
-    } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: 'Server Error' });
+  try {
+    const user = await User.findById(req.userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
-}
+
+    return res.json({ success: true, user });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: "Server Error" });
+  }
+};
 
 // Logout user:/api/user/logout
 export const logout=async(req,res)=>{
     try {
-        res.clearCookie('token',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:process.env.NODE_ENV==='production'?'none':'strict'});
+        res.clearCookie('userToken',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:process.env.NODE_ENV==='production'?'none':'strict'});
         return res.json({success:true,message:"Logout Successfully"});
     } catch (error) {
         console.log(error.message);
