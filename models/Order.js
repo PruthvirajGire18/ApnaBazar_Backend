@@ -1,14 +1,14 @@
 import mongoose from "mongoose";
-const addressSchema=new mongoose.Schema({
+const orderSchema=new mongoose.Schema({
     userId:{
-        type:String,
+        type:mongoose.Schema.Types.ObjectId,
         required:true,
         ref:'user'
     },
     items:[
         {
             product:{
-                type:String,
+                type:mongoose.Schema.Types.ObjectId,
                 required:true,
                 ref:'product'
             },
@@ -19,17 +19,55 @@ const addressSchema=new mongoose.Schema({
         }
     ],
     amount:{
-                type:Number,
-                required:true
-            },
-    address:{
+        type:Number,
+        required:true
+    },
+    subtotal:{
+        type:Number,
+        required:true
+    },
+    tax:{
+        type:Number,
+        default:0
+    },
+    deliveryFee:{
+        type:Number,
+        default:0
+    },
+    discount:{
+        type:Number,
+        default:0
+    },
+    couponCode:{
         type:String,
+        default:null
+    },
+    address:{
+        type:mongoose.Schema.Types.ObjectId,
         required:true,
         ref:'address'
     },
     status:{
         type:String,
+        enum:['Order Placed', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'],
         default:"Order Placed"
+    },
+    deliveryTimeSlot:{
+        type:String,
+        default:null
+    },
+    estimatedDelivery:{
+        type:Date,
+        default:null
+    },
+    isExpressDelivery:{
+        type:Boolean,
+        default:false
+    },
+    trackingNumber:{
+        type:String,
+        unique:true,
+        sparse:true
     },
     paymentType:{
         type:String,
@@ -38,7 +76,50 @@ const addressSchema=new mongoose.Schema({
     isPaid:{
         type:Boolean,
         default:false
+    },
+    paymentIntentId:{
+        type:String,
+        default:null
+    },
+    statusHistory:[{
+        status:String,
+        timestamp:Date,
+        message:String
+    }],
+    cancelledAt:{
+        type:Date,
+        default:null
+    },
+    cancellationReason:{
+        type:String,
+        default:null
+    },
+    refundStatus:{
+        type:String,
+        enum:['None', 'Pending', 'Processing', 'Refunded', 'Failed'],
+        default:'None'
+    },
+    refundAmount:{
+        type:Number,
+        default:0
+    },
+    refundTransactionId:{
+        type:String,
+        default:null
+    },
+    deliveryPersonId:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'user',
+        default:null
+    },
+    deliveryPersonLocation:{
+        latitude:Number,
+        longitude:Number
+    },
+    lastLocationUpdate:{
+        type:Date,
+        default:null
     }
 },{timestamps:true})
-const Order=mongoose.models.order||mongoose.model('order',addressSchema);
+const Order=mongoose.models.order||mongoose.model('order',orderSchema);
 export default Order;

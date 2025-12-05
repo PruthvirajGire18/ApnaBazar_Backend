@@ -1,10 +1,9 @@
-import e from "express";
 import mongoose from "mongoose";
-import { use } from "react";
 const addressSchema=new mongoose.Schema({
     userId:{
-        type:String,
-        required:true
+        type:mongoose.Schema.Types.ObjectId,
+        required:true,
+        ref:'user'
     },
     firstName:{
         type:String,
@@ -35,13 +34,13 @@ const addressSchema=new mongoose.Schema({
         required:true
     },
     zipCode:{
-        type:Number,
+        type:String,
         required:true
     },
     phone:{
         type:String,
         required:true
     }
-})
+},{timestamps:true})
 const Address=mongoose.models.address||mongoose.model('address',addressSchema);
 export default Address;
