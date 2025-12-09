@@ -1,10 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import Product from '../models/Product.js';
-import fs from 'fs';
-import path from 'path';
 // add product =/api/product/add
 export const addProduct = async (req, res) => {
-  const uploadedFiles = []; // Track files for cleanup
   try {
     console.log('----- /api/product/add hit hua -----');
     console.log('BODY:', req.body);
@@ -27,67 +24,41 @@ export const addProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'At least one image is required' });
     }
 
-    // Upload images to Cloudinary
+    // Upload images directly to Cloudinary from memory buffer
+    // No local storage needed - files go straight to Cloudinary
     const imagesUrl = [];
     for (const item of images) {
       try {
-        if (!item.path) {
-          console.error('File path is missing:', item);
+        if (!item.buffer) {
+          console.error('File buffer is missing:', item);
           continue;
         }
         
-        // Check if file exists
-        if (!fs.existsSync(item.path)) {
-          console.error('File does not exist:', item.path);
-          continue;
-        }
-
-        console.log('Uploading file to Cloudinary:', item.path);
-        const result = await cloudinary.uploader.upload(item.path, {
+        // Upload buffer directly to Cloudinary as base64 data URI
+        console.log('Uploading file to Cloudinary:', item.originalname);
+        const base64String = item.buffer.toString('base64');
+        const dataUri = `data:${item.mimetype};base64,${base64String}`;
+        
+        const uploadResult = await cloudinary.uploader.upload(dataUri, {
           resource_type: 'image',
           folder: 'products',
         });
-        console.log('Uploaded to Cloudinary, url:', result.secure_url);
-        imagesUrl.push(result.secure_url);
-        uploadedFiles.push(item.path); // Track for cleanup
+        
+        console.log('Uploaded to Cloudinary, url:', uploadResult.secure_url);
+        imagesUrl.push(uploadResult.secure_url);
       } catch (uploadError) {
         console.error('Error uploading file to Cloudinary:', uploadError);
         // Continue with other files, but log the error
-        if (fs.existsSync(item.path)) {
-          uploadedFiles.push(item.path);
-        }
       }
     }
 
     if (imagesUrl.length === 0) {
-      // Cleanup uploaded files
-      uploadedFiles.forEach(filePath => {
-        try {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        } catch (cleanupError) {
-          console.error('Error cleaning up file:', cleanupError);
-        }
-      });
       return res.status(400).json({ success: false, message: 'Failed to upload images to Cloudinary. Please check your Cloudinary configuration.' });
     }
 
     // Create product in database
     const newProduct = await Product.create({ ...productData, images: imagesUrl });
     console.log('Product created successfully:', newProduct._id);
-
-    // Cleanup uploaded files after successful Cloudinary upload
-    uploadedFiles.forEach(filePath => {
-      try {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-          console.log('Cleaned up file:', filePath);
-        }
-      } catch (cleanupError) {
-        console.error('Error cleaning up file:', cleanupError);
-      }
-    });
 
     res.status(201).json({
       success: true,
@@ -97,17 +68,6 @@ export const addProduct = async (req, res) => {
   } catch (error) {
     console.error('Error adding product:', error);
     console.error('Error stack:', error.stack);
-    
-    // Cleanup uploaded files on error
-    uploadedFiles.forEach(filePath => {
-      try {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch (cleanupError) {
-        console.error('Error cleaning up file:', cleanupError);
-      }
-    });
 
     // Return proper error response
     res.status(500).json({ 
